@@ -38,6 +38,15 @@ coverage.xml
 
 # IDE 文件
 .idea/
+
+# 文档目录控制 - 只保留指定文件
+document/*
+!document/document.docx
+!document/问题记录.txt
+!document/key_descriptions/
+document/key_descriptions/*
+!document/key_descriptions/image_key_description.txt
+!document/key_descriptions/table_key_description.txt
 .vscode/
 *.swp
 *.swo
@@ -45,12 +54,7 @@ coverage.xml
 .DS_Store
 
 # 项目特定输出和临时文件
-document/document_parts
-document/match_results
 *.log
-*.csv
-*.docx
-*.xlsx
 *.tmp
 
 # API密钥和敏感信息
@@ -59,8 +63,10 @@ secrets.json
 *_key.txt
 *_token.txt
 
-# 二进制文件和压缩文件
-*.zip
+# 二进制文件和压缩文件（排除需要保留的document.docx）
+document/*.zip
+document/*.pdf
+document/*.html
 *.tar.gz
 *.tar
 *.rar
