@@ -18,7 +18,7 @@
 
 ## 输入数据
 - **表格文件**：
-<table><tr><td colspan="2">Measurements</td></tr><tr><td>Sp1</td><td>29.3℃</td></tr><tr><td>Bx1</td><td></td></tr><tr><td>Max</td><td>35.8℃</td></tr><tr><td>Avg</td><td>28.1℃</td></tr><tr><td>Min</td><td>23.2℃</td></tr><tr><td>Dt1(公式)</td><td></td></tr><tr><td>Bx1.Max-Sp1DeltaValue</td><td>6.5℃</td></tr></table>
+placeholder_table_content
   
 - **key描述文件**：
 placeholder_key_description
@@ -26,15 +26,16 @@ placeholder_key_description
 
 ## 输出格式
 <match_result>
+[
   {
-      "key": "表格中的key",
-      "value": "表格中的value",
-      "matched_key": "key描述文件中匹配的key或空字符串"
+    "key": "表格中的key",
+    "value": "表格中的value",
+    "matched_key": "key描述文件中匹配的key或空字符串"
   },
   {
-      "key": "表格中原始的key",
-      "value": "表格中的value",
-      "matched_key": "key描述文件中匹配的key或空字符串"
+    "key": "表格中原始的key", 
+    "value": "表格中的value",
+    "matched_key": "key描述文件中匹配的key或空字符串"
   }
-  ...
+]
 </match_result>

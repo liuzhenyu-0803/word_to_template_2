@@ -69,19 +69,21 @@ def parse_llm_response(response_text):
     
     # 使用最后一个匹配结果（如果有多个）
     json_str = matches[-1].strip()
-
-    json_str = f"[{json_str}]"
     
-    # 解析JSON
+    # 直接解析JSON数组，不再手动添加方括号
     result_list = json.loads(json_str)
+    
+    # 验证结果必须是列表
+    if not isinstance(result_list, list):
+        raise ValueError("解析结果不是JSON数组格式")
     
     # 验证每个结果项是否包含必需的字段
     valid_results = []
     for item in result_list:
-        if all(k in item for k in ['key', 'value', 'matched_key']):
+        if isinstance(item, dict) and all(k in item for k in ['key', 'value', 'matched_key']):
             valid_results.append(item)
         else:
-            print(f"警告: 跳过缺少必填字段的项: {item}")
+            print(f"警告: 跳过格式不正确的项: {item}")
     
     print(f"成功提取和解析了 {len(valid_results)} 个匹配结果")
     return valid_results
@@ -114,57 +116,40 @@ def match_table(key_description_path, table_content_path):
         {"role": "user", "content": system_message}
     ]
 
-    # LLM调用和JSON解析，JSON解析失败时支持重试
+    # LLM调用和JSON解析，简化重试机制
     print("调用LLM进行表格匹配...")
     
-    max_retries = 3
-    analysis_result = None
-    
-    for attempt in range(max_retries):
-        # 首次调用或重试时调用LLM
-        if attempt == 0 or analysis_result is None:
-            try:
-                if attempt == 0:
-                    print("首次调用LLM...")
-                else:
-                    print("重新调用LLM...")
-                    
-                analysis_result = llm_manager.create_completion(messages, temperature=0)
-                
-                if not analysis_result:
-                    print("LLM返回空结果，终止处理")
-                    return []
-                
-                # 打印模型输出结果
-                print(f"LLM调用成功，输出内容：\n{'-'*50}\n{analysis_result}\n{'-'*50}")
-                
-            except Exception as e:
-                print(f"LLM调用失败: {str(e)}")
-                return []
-        # 尝试解析JSON
+    for attempt in range(2):  # 最多2次尝试
         try:
+            if attempt == 0:
+                print("首次调用LLM...")
+            else:
+                print("重新调用LLM...")
+                
+            # 调用LLM
+            analysis_result = llm_manager.create_completion(messages, temperature=0)
+            
+            if not analysis_result:
+                print("LLM返回空结果，终止处理")
+                return []
+            
+            # 打印模型输出结果
+            print(f"LLM调用成功，输出内容：\n{'-'*50}\n{analysis_result}\n{'-'*50}")
+            
+            # 尝试解析JSON
             result_list = parse_llm_response(analysis_result)
             print(f"表格解析成功，返回 {len(result_list)} 条结果")
             return result_list
                 
         except Exception as e:
-            print(f"尝试 {attempt+1}/{max_retries} 解析失败: {str(e)}")
-            
-            # 如果还有重试机会，则添加提示准备重新调用LLM
-            if attempt < max_retries - 1:
-                print("添加提示并准备重新调用LLM...")
-                messages.append({"role": "assistant", "content": analysis_result})
-                messages.append({
-                    "role": "user", 
-                    "content": "输出格式错误，请检查"
-                })
-                # 设置 analysis_result 为 None，让下次循环重新调用LLM
-                analysis_result = None
+            if attempt == 0:  # 第一次失败，重试一次
+                print(f"第{attempt+1}次尝试失败: {str(e)}，重试中...")
+                continue
+            else:  # 第二次还失败，直接返回
+                print(f"两次尝试都失败，返回空结果: {str(e)}")
+                return []
     
-    print(f"所有 {max_retries} 次解析尝试都失败了，返回空结果")
-    return []
-    
-    # 如果所有尝试都失败，返回空列表
+    # 理论上不会执行到这里
     return []
 
 def match_tables(document_parts_dir, match_results_dir, key_description_path):
@@ -193,7 +178,7 @@ def match_tables(document_parts_dir, match_results_dir, key_description_path):
     }
     
     # 获取所有表格文件
-    table_files = [f for f in os.listdir(document_parts_dir) if f.startswith("table_") and f.endswith(".csv")]
+    table_files = [f for f in os.listdir(document_parts_dir) if f.startswith("table_") and f.endswith(".html")]
     
     if not table_files:
         print(f"警告：在目录 {document_parts_dir} 中未找到表格文件")
@@ -216,7 +201,7 @@ def match_tables(document_parts_dir, match_results_dir, key_description_path):
             stats["total_keys_matched"] += len(results)
             
             # 构建输出文件名
-            output_filename = table_file.replace(".csv", "_matches.json")
+            output_filename = table_file.replace(".html", "_matches.json")
             output_path = os.path.join(match_results_dir, output_filename)
             
             # 保存匹配结果
@@ -237,9 +222,9 @@ if __name__ == "__main__":
     # llm_manager.init_remote_model()
     
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    project_dir = os.path.dirname(current_dir)
-    key_description_path = os.path.join(project_dir, 'document/key_descriptions/table_key_description.txt')
-    table_content_path = os.path.join(project_dir, 'document/document_parts/table_6.csv')
+    project_dir = os.path.dirname(os.path.dirname(current_dir))
+    key_description_path = os.path.join(project_dir, 'document', 'key_descriptions', 'table_key_description.txt')
+    table_content_path = os.path.join(project_dir, 'document', 'document_parts', 'table_6.html')
     results = match_table(key_description_path, table_content_path)
     
     # 显示匹配结果
