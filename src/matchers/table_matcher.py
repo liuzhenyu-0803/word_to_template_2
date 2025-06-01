@@ -59,14 +59,14 @@ def parse_llm_response(response_text):
     Raises:
         ValueError: 当无法找到匹配结果标签或解析失败时抛出
     """
-    # 使用正则表达式提取<match_result>标签内的内容
+    # 使用正则表达式提取<match_results>标签内的内容
     import re
-    pattern = r'<match_result>(.*?)</match_result>'
+    pattern = r'<match_results>(.*?)</match_results>'
     matches = re.findall(pattern, response_text, re.DOTALL)
     
     if not matches:
-        raise ValueError("未找到<match_result>标签")
-    
+        raise ValueError("未找到<match_results>标签")
+
     # 使用最后一个匹配结果（如果有多个）
     json_str = matches[-1].strip()
     
