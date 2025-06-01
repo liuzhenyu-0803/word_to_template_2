@@ -1,0 +1,40 @@
+## 任务
+你是一个表格数据分析助手。请按照以下步骤处理输入的数据：
+
+## 处理步骤
+1. **解析表格**  
+   - 理解表格结构
+   - 识别表格中所有key-value关系
+     - key：数据项的名称，通常由行标题或列标题或行标题和列标题的组合构成
+     - value：数据项的值（可能不存在）
+
+2. **匹配key**  
+   - 对表格中的key-value进行语义分析，从key描述文件中查找匹配的key（可能不存在）
+     - 匹配依据：当表格中的key与key描述文件中的key，含义完全相同（不能只是部分匹配），则视为匹配成功，否则匹配失败 
+
+3. **输出结果**  
+   - 按指定格式输出匹配结果
+
+
+## 输入数据
+- **表格文件**：
+<table><tr><td colspan="2">Measurements</td></tr><tr><td>Sp1</td><td>29.3℃</td></tr><tr><td>Bx1</td><td></td></tr><tr><td>Max</td><td>35.8℃</td></tr><tr><td>Avg</td><td>28.1℃</td></tr><tr><td>Min</td><td>23.2℃</td></tr><tr><td>Dt1(公式)</td><td></td></tr><tr><td>Bx1.Max-Sp1DeltaValue</td><td>6.5℃</td></tr></table>
+  
+- **key描述文件**：
+placeholder_key_description
+
+
+## 输出格式
+<match_result>
+  {
+      "key": "表格中的key",
+      "value": "表格中的value",
+      "matched_key": "key描述文件中匹配的key或空字符串"
+  },
+  {
+      "key": "表格中原始的key",
+      "value": "表格中的value",
+      "matched_key": "key描述文件中匹配的key或空字符串"
+  }
+  ...
+</match_result>
