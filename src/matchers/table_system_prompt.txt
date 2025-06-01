@@ -6,7 +6,7 @@
 1. **解析表格**  
    - 理解表格结构
    - 识别表格中所有key-value关系
-     - key：数据项的名称，通常由行标题或列标题或行标题和列标题的组合构成
+     - key：数据项的名称，通常由行标题或列标题或行标题+列标题构成
      - value：数据项的值（可能不存在）
 
 2. **匹配key**  
@@ -29,9 +29,9 @@ placeholder_key_description
 <match_results>
 [
   {
-    "key": "表格中识别出的key",
-    "value": "表格中识别出的value",
-    "matched_key": "key描述文件中匹配的key或空字符串"
+    "key": "匹配前的key",
+    "value": "value",
+    "matched_key": "匹配后的key或空字符串"
   },
   ...
 ]
