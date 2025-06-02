@@ -60,6 +60,7 @@ class ModelManager:
         try:
             # 获取models目录路径
             current_dir = os.path.dirname(os.path.abspath(__file__))
+            model_name = "gemma-3-4b-it-Q4_K_M.gguf"
             model_path = os.path.join(current_dir, model_name)
             
             # 检查模型文件是否存在

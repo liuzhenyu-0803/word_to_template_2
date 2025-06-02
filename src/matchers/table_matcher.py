@@ -258,6 +258,9 @@ def match_tables(document_parts_dir, match_results_dir, key_description_path):
 # ================ 主入口 ================
 
 if __name__ == "__main__":
+    import time
+    start_time = time.time()
+    
     llm_manager.init_local_model()
     # llm_manager.init_remote_model()
     
@@ -277,3 +280,7 @@ if __name__ == "__main__":
             print()
     else:
         print("未获取到有效的匹配结果")
+    
+    # 总耗时
+    end_time = time.time()
+    print(f"\n总耗时: {end_time - start_time:.2f} 秒")
