@@ -264,10 +264,15 @@ if __name__ == "__main__":
     llm_manager.init_local_model()
     # llm_manager.init_remote_model()
     
+    # 使用项目标准路径结构，但只测试单个表格
     current_dir = os.path.dirname(os.path.abspath(__file__))
     project_dir = os.path.dirname(os.path.dirname(current_dir))
+    
+    match_results_dir = os.path.join(project_dir, 'document', 'match_results')
     key_description_path = os.path.join(project_dir, 'document', 'key_descriptions', 'table_key_description.txt')
     table_content_path = os.path.join(project_dir, 'document', 'document_parts', 'table_6.html')
+    
+    print("开始单个表格匹配测试 (table_6)...")
     results = match_table(key_description_path, table_content_path)
     
     # 显示匹配结果
@@ -278,6 +283,14 @@ if __name__ == "__main__":
             print(f"   value: {result['value']}")
             print(f"   new_key: {result['new_key'] or '无匹配'}")
             print()
+        
+        # 保存匹配结果到文件（与batch处理保持一致的格式）
+        os.makedirs(match_results_dir, exist_ok=True)
+        output_path = os.path.join(match_results_dir, 'table_6_matches.json')
+        
+        with open(output_path, 'w', encoding='utf-8') as f:
+            json.dump(results, f, ensure_ascii=False, indent=2)
+        print(f"已保存匹配结果到: {output_path}")
     else:
         print("未获取到有效的匹配结果")
     

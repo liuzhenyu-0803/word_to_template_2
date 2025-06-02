@@ -4,7 +4,6 @@ Word文档替换器 - 封装文档元素替换功能
 """  
 
 import os
-import shutil
 from docx import Document
 from . import paragraph_replacer
 from . import table_replacer
@@ -33,21 +32,30 @@ def replace_document(original_doc_path, match_results_dir, template_doc_path):
         os.makedirs(output_dir, exist_ok=True)
     
     # 读取原始文档
+    print(f"正在读取原始文档: {original_doc_path}")
     doc = Document(original_doc_path)
     
     # 获取表格匹配结果文件列表
-    table_match_files = [f for f in os.listdir(match_results_dir) if f.startswith('table_') and f.endswith('.json')]
+    table_match_files = [f for f in os.listdir(match_results_dir) if f.startswith('table_') and f.endswith('_matches.json')]
     
     # 处理表格替换 - 将实际内容替换为占位符
     if table_match_files:
+        print(f"找到 {len(table_match_files)} 个表格匹配结果文件，开始处理表格替换...")
         table_replacer.replace_values_with_placeholders(doc, match_results_dir, table_match_files)
+        print("表格替换完成")
+    else:
+        print("未找到表格匹配结果文件")
     
     # 获取段落匹配结果文件列表
-    paragraph_match_files = [f for f in os.listdir(match_results_dir) if f.startswith('paragraph_') and f.endswith('.json')]
+    paragraph_match_files = [f for f in os.listdir(match_results_dir) if f.startswith('paragraph_') and f.endswith('_matches.json')]
     
     # 处理段落替换 - 将实际内容替换为占位符
     if paragraph_match_files:
+        print(f"找到 {len(paragraph_match_files)} 个段落匹配结果文件，开始处理段落替换...")
         paragraph_replacer.replace_values_with_placeholders(doc, match_results_dir, paragraph_match_files)
+        print("段落替换完成")
+    else:
+        print("未找到段落匹配结果文件")
     
     # 保存处理后的模板文档
     doc.save(template_doc_path)
