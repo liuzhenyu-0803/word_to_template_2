@@ -33,8 +33,13 @@ def process_word_document(original_doc_path, template_doc_path, parts_dir, match
     
     # 步骤1: 提取文档元素
     print("\n===== 步骤1: 提取文档元素 =====")
-    doc = Document(original_doc_path)
-    paragraph_count, table_count, unique_tables, image_count = extract_document(doc, parts_dir)
+    # 先将Word转换为HTML
+    from converter.converter import word_to_html
+    html_path = os.path.join(parts_dir, "document.html")
+    word_to_html(original_doc_path, html_path)
+    
+    # 从HTML提取元素
+    paragraph_count, table_count, unique_tables, image_count = extract_document(html_path, parts_dir)
     
     print(f"文档共有 {paragraph_count} 个段落和 {unique_tables} 个唯一表格")
     print(f"文档包含 {image_count} 个图片")

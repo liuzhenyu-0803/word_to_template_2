@@ -7,14 +7,13 @@ import os
 import shutil
 from . import paragraph_extractor
 from . import table_extractor
-from . import image_extractor
 
-def extract_document(doc, output_dir):
+def extract_document(html_path, output_dir):
     """
-    提取Word文档的所有内容元素
+    从HTML文件提取所有内容元素
     
     参数:
-        doc: docx.Document对象
+        html_path: HTML文件路径
         output_dir: 输出目录路径
         
     返回:
@@ -34,12 +33,9 @@ def extract_document(doc, output_dir):
         os.makedirs(output_dir)
     
     # 处理段落
-    paragraph_count = paragraph_extractor.extract_paragraphs(doc, output_dir)
+    paragraph_count = paragraph_extractor.extract_paragraphs(html_path, output_dir)
     
     # 处理表格
-    table_count, unique_tables = table_extractor.extract_tables(doc, output_dir)
+    table_count, unique_tables = table_extractor.extract_tables(html_path, output_dir)
     
-    # 处理图片
-    image_count, _ = image_extractor.extract_images(doc, output_dir)
-    
-    return paragraph_count, table_count, unique_tables, image_count
+    return paragraph_count, table_count, unique_tables

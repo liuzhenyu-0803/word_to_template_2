@@ -169,10 +169,6 @@ def parse_position(pos_str):
     """
     解析位置字符串，格式为 "(行号, 列号)"
     返回 (row_index, col_index)，索引从0开始
-    
-    根据实际分析：
-    - JSON中 (1,1) 对应 Word表格的第1行第1列（0-based索引）
-    - 即 (1,1) -> [1][1]，不需要减1
     """
     try:
         # 匹配 "(数字, 数字)" 格式
@@ -180,7 +176,7 @@ def parse_position(pos_str):
         if match:
             row = int(match.group(1))
             col = int(match.group(2))
-            # JSON中的位置信息似乎就是0-based索引，直接使用
+            # 假设位置信息是从1开始的，转换为从0开始的索引
             return row, col
         else:
             return None, None

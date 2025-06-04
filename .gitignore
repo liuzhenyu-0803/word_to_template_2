@@ -36,8 +36,9 @@ nosetests.xml
 coverage.xml
 *.cover
 
-# IDE 文件
+# IDE 和版本控制文件
 .idea/
+.svn/
 
 # 文档目录控制 - 只保留指定文件
 document/*
