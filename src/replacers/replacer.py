@@ -8,7 +8,7 @@ from docx import Document
 from . import paragraph_replacer
 from . import table_replacer
 
-def replace_document(original_doc_path, match_results_dir, template_doc_path):
+def replace_document(original_doc_path, match_results_dir, template_doc_path, use_html=True):
     """
     根据匹配结果将Word文档中的实际内容替换为占位符，生成模板
     
@@ -16,6 +16,7 @@ def replace_document(original_doc_path, match_results_dir, template_doc_path):
         original_doc_path: 原始Word文档路径
         match_results_dir: 匹配结果目录路径，包含从matcher得到的匹配结果
         template_doc_path: 生成的模板文档输出路径
+        use_html: 是否使用HTML方式进行表格处理，默认为True（推荐）
     """
     # 检查输入文件和目录是否存在
     if not os.path.exists(original_doc_path):
@@ -37,11 +38,10 @@ def replace_document(original_doc_path, match_results_dir, template_doc_path):
     
     # 获取表格匹配结果文件列表
     table_match_files = [f for f in os.listdir(match_results_dir) if f.startswith('table_') and f.endswith('_matches.json')]
-    
-    # 处理表格替换 - 将实际内容替换为占位符
+      # 处理表格替换 - 将实际内容替换为占位符
     if table_match_files:
         print(f"找到 {len(table_match_files)} 个表格匹配结果文件，开始处理表格替换...")
-        table_replacer.replace_values_with_placeholders(doc, match_results_dir, table_match_files)
+        table_replacer.replace_values_with_placeholders(doc, match_results_dir, table_match_files, use_html)
         print("表格替换完成")
     else:
         print("未找到表格匹配结果文件")
@@ -68,4 +68,4 @@ if __name__ == "__main__":
     match_results_dir = os.path.join(project_dir, "document/match_results")
     template_doc_path = os.path.join(project_dir, "document/template.docx")
     
-    replace_document(original_doc_path, match_results_dir, template_doc_path)
+    replace_document(original_doc_path, match_results_dir, template_doc_path, use_html=True)

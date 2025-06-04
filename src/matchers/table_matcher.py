@@ -77,13 +77,13 @@ def parse_extract_response(response_text):
             else:
                 raise ValueError("无法找到有效的JSON数组")
         
-        # 验证格式：[{"key": "...", "value": "..."}]
+        # 验证格式：[{"key": "...", "value": "...", "valuePos": "..."}]
         if not isinstance(result_list, list):
             raise ValueError("结果不是数组格式")
         
         valid_results = []
         for item in result_list:
-            if isinstance(item, dict) and 'key' in item and 'value' in item:
+            if isinstance(item, dict) and 'key' in item and 'value' in item and 'valuePos' in item:
                 valid_results.append(item)
             else:
                 print(f"警告: 跳过格式不正确的项: {item}")
@@ -136,7 +136,7 @@ def match_table(key_description_path, table_content_path):
     2. 进行key语义匹配
     
     Returns:
-        list: [{"old_key": "...", "value": "...", "new_key": "..."}]
+        list: [{"old_key": "...", "value": "...", "new_key": "...", "valuePos": "..."}]
     """
     current_dir = os.path.dirname(os.path.abspath(__file__))
     
@@ -176,9 +176,16 @@ def match_table(key_description_path, table_content_path):
         print("第一阶段未提取到key-value对")
         return []
     
+    # 暂存第一阶段的valuePos信息，创建key到valuePos的映射
+    key_to_valuepos = {}
+    for item in key_value_pairs:
+        key_to_valuepos[item['key']] = item['valuePos']
+    
     # 第二阶段：key匹配
     print("第二阶段：key匹配...")
-    key_value_json = json.dumps(key_value_pairs, ensure_ascii=False, indent=2)
+    # 准备第二阶段输入时，只包含key和value，不包含valuePos
+    key_value_for_matching = [{"key": item["key"], "value": item["value"]} for item in key_value_pairs]
+    key_value_json = json.dumps(key_value_for_matching, ensure_ascii=False, indent=2)
     match_message = prepare_match_message(
         os.path.join(current_dir, 'table_system_prompt_2.md'),
         key_description_path,
@@ -195,7 +202,20 @@ def match_table(key_description_path, table_content_path):
                 return []
             
             print(f"第二阶段输出：\n{'-'*30}\n{match_result}\n{'-'*30}")
-            final_results = parse_match_response(match_result)
+            match_results = parse_match_response(match_result)
+            
+            # 将第一阶段的valuePos字段合并到第二阶段结果中
+            final_results = []
+            for item in match_results:
+                old_key = item['old_key']
+                final_item = {
+                    "old_key": old_key,
+                    "value": item['value'],
+                    "new_key": item['new_key'],
+                    "valuePos": key_to_valuepos.get(old_key, "")
+                }
+                final_results.append(final_item)
+            
             print(f"匹配完成，返回 {len(final_results)} 个结果")
             return final_results
                 
@@ -274,14 +294,14 @@ if __name__ == "__main__":
     
     print("开始单个表格匹配测试 (table_6)...")
     results = match_table(key_description_path, table_content_path)
-    
-    # 显示匹配结果
+      # 显示匹配结果
     if results:
         print("\n最终匹配结果:")
         for i, result in enumerate(results, 1):
             print(f"{i}. old_key: {result['old_key']}")
             print(f"   value: {result['value']}")
             print(f"   new_key: {result['new_key'] or '无匹配'}")
+            print(f"   valuePos: {result['valuePos']}")
             print()
         
         # 保存匹配结果到文件（与batch处理保持一致的格式）

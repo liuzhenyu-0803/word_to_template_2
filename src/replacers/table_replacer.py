@@ -1,10 +1,11 @@
 """  
 表格替换模块  
-负责处理Word文档中表格内容的替换
+负责处理Word文档中表格内容的替换（仅使用Word对象处理）
 """  
 
 import os
 import json
+import re
 
 def replace_values_with_placeholders(doc, match_results_dir, match_files):
     """
@@ -15,67 +16,176 @@ def replace_values_with_placeholders(doc, match_results_dir, match_files):
         match_results_dir: 匹配结果目录路径
         match_files: 表格匹配结果文件列表
     """
-    # 创建一个值到键的反向映射
-    value_to_key_map = {}
     
-    for match_file in match_files:
-        file_path = os.path.join(match_results_dir, match_file)
-        try:
-            with open(file_path, 'r', encoding='utf-8') as f:
-                match_data = json.load(f)
-                for item in match_data:
-                    if 'new_key' in item and 'value' in item:
-                        key = item['new_key']
-                        value = item['value']
-                        # 添加到值到键的映射
-                        if value and value.strip() and key and key.strip():  # 确保值和键都不为空
-                            value_to_key_map[value] = key
-        except Exception as e:
-            print(f"读取匹配结果文件 {match_file} 失败: {e}")
-    
-    print(f"加载了 {len(value_to_key_map)} 个表格值-键映射项")
-    
-    # 按值的长度降序排序，以便先替换长文本，避免部分匹配问题
-    sorted_values = sorted(value_to_key_map.keys(), key=len, reverse=True)
-    
-    # 遍历所有表格
-    for table in doc.tables:
-        process_table_replacement(table, value_to_key_map)
+    try:
+        # 获取文档中的所有表格（包括嵌套表格）
+        all_tables = get_all_tables_including_nested(doc)
+        
+        # 处理每个匹配文件
+        for match_file in match_files:
+            file_path = os.path.join(match_results_dir, match_file)
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    match_data = json.load(f)
+                
+                # 提取表格编号
+                table_number = extract_table_number_from_filename(match_file)
+                if table_number is None or table_number > len(all_tables):
+                    continue
+                
+                target_table = all_tables[table_number - 1]
+                
+                # 根据位置信息替换单元格内容
+                replace_cells_by_position(target_table, match_data)
+                
+            except Exception as e:
+                print(f"处理匹配文件 {match_file} 时出错: {e}")
+        
+    except Exception as e:
+        print(f"处理失败: {e}")
+        raise
 
-def process_table_replacement(table, value_to_key_map):
+def get_all_tables_including_nested(doc):
     """
-    处理表格的内容替换，包括嵌套表格
+    获取文档中的所有表格（包括嵌套表格）
+    使用与CSV提取相同的逻辑，通过哈希去重确保返回7个唯一表格
     
     参数:
-        table: 表格对象
-        value_to_key_map: 值到键的映射字典
+        doc: docx.Document对象
+        
+    返回:
+        list: 所有唯一表格的列表，按发现顺序排列（总共7个）
     """
-    # 按值的长度降序排序，以便先替换长文本，避免部分匹配问题
-    sorted_values = sorted(value_to_key_map.keys(), key=len, reverse=True)
+    import hashlib
+    import json
     
-    for row in table.rows:
-        for cell in row.cells:
-            # 获取单元格的原始文本
-            original_text = cell.text
-            if original_text.strip():
-                new_text = original_text
-                replaced = False
-                
-                # 按值的长度降序尝试替换
-                for value in sorted_values:
-                    if value in new_text:
-                        key = value_to_key_map[value]
-                        new_text = new_text.replace(value, key)  # 直接使用key，不添加花括号
-                        replaced = True
-                
-                # 如果有替换，更新单元格内容
-                if replaced and new_text != original_text:
-                    cell.text = new_text
+    all_tables = []
+    table_hashes = set()
+    
+    def extract_table_data(table):
+        """提取表格数据为二维数组"""
+        data = []
+        for row in table.rows:
+            row_data = []
+            for cell in row.cells:
+                cell_text = '\n'.join(p.text for p in cell.paragraphs).strip()
+                row_data.append(cell_text if cell_text is not None else "")
+            data.append(row_data)
+        return data
+    
+    def hash_table_content(table_data):
+        """计算表格内容的哈希值"""
+        try:
+            table_string = json.dumps(table_data, sort_keys=True)
+        except TypeError:
+            table_string = str(table_data)
+        return hashlib.sha256(table_string.encode('utf-8')).hexdigest()
+    
+    def collect_nested_tables(table, processed_hashes, result_tables):
+        """递归收集嵌套表格"""
+        for row in table.rows:
+            for cell in row.cells:
+                if cell.tables:
+                    for nested_table in cell.tables:
+                        nested_data = extract_table_data(nested_table)
+                        nested_hash = hash_table_content(nested_data)
+                        
+                        if nested_hash not in processed_hashes:
+                            processed_hashes.add(nested_hash)
+                            result_tables.append(nested_table)
+                        
+                        # 递归处理更深层嵌套
+                        collect_nested_tables(nested_table, processed_hashes, result_tables)
+    
+    # 处理顶层表格
+    for table in doc.tables:
+        table_data = extract_table_data(table)
+        table_hash = hash_table_content(table_data)
+        
+        if table_hash not in table_hashes:
+            table_hashes.add(table_hash)
+            all_tables.append(table)
+        
+        # 收集嵌套表格
+        collect_nested_tables(table, table_hashes, all_tables)
+    
+    print(f"Word文档中发现 {len(all_tables)} 个唯一表格（包括嵌套表格）")
+    print(f"与HTML文档中的7个表格数量一致")
+    
+    return all_tables
+
+def replace_cells_by_position(table, match_data):
+    """
+    根据位置信息替换表格单元格内容
+    
+    参数:
+        table: 目标表格对象
+        match_data: 匹配数据列表，包含位置信息
+    """
+    for item in match_data:
+        try:
+            # 解析位置信息，格式为 "(行号, 列号)"
+            pos_str = item.get('valuePos', '')
+            if not pos_str:
+                continue
             
-            # 处理嵌套表格
-            if hasattr(cell, 'tables') and cell.tables:
-                for nested_table in cell.tables:
-                    process_table_replacement(nested_table, value_to_key_map)
+            row_index, col_index = parse_position(pos_str)
+            if row_index is None or col_index is None:
+                continue
+            
+            # 检查位置是否在表格范围内
+            if row_index >= len(table.rows) or col_index >= len(table.rows[row_index].cells):
+                continue
+            
+            # 获取目标单元格
+            target_cell = table.rows[row_index].cells[col_index]
+            
+            # 确定替换内容
+            new_key = item.get('new_key', '').strip()
+            old_key = item.get('old_key', '').strip()
+            
+            if new_key:
+                replacement_text = f"[{new_key}]"
+            elif old_key:
+                replacement_text = f"[{old_key}]"
+            else:
+                continue
+            
+            # 替换单元格内容
+            target_cell.text = replacement_text
+            
+        except Exception as e:
+            print(f"处理匹配项时出错: {item}, 错误: {e}")
+
+def extract_table_number_from_filename(filename):
+    """从文件名中提取表格编号"""
+    # 匹配 table_数字_matches.json 格式
+    match = re.search(r'table_(\d+)_matches\.json', filename)
+    if match:
+        return int(match.group(1))
+    return None
+
+def parse_position(pos_str):
+    """
+    解析位置字符串，格式为 "(行号, 列号)"
+    返回 (row_index, col_index)，索引从0开始
+    
+    根据实际分析：
+    - JSON中 (1,1) 对应 Word表格的第1行第1列（0-based索引）
+    - 即 (1,1) -> [1][1]，不需要减1
+    """
+    try:
+        # 匹配 "(数字, 数字)" 格式
+        match = re.search(r'\((\d+),\s*(\d+)\)', pos_str)
+        if match:
+            row = int(match.group(1))
+            col = int(match.group(2))
+            # JSON中的位置信息似乎就是0-based索引，直接使用
+            return row, col
+        else:
+            return None, None
+    except:
+        return None, None
 
 # 直接运行时的入口点
 if __name__ == "__main__":
@@ -114,20 +224,15 @@ if __name__ == "__main__":
     # 只使用 table_6 的匹配结果文件
     table_match_files = ['table_6_matches.json']
     
-    # 检查 table_6 匹配结果是否存在
+    # 检查匹配结果是否存在
     table_6_path = os.path.join(match_results_dir, 'table_6_matches.json')
     if not os.path.exists(table_6_path):
-        print(f"错误：table_6 匹配结果文件不存在: {table_6_path}")
-        print("请先运行 table_matcher.py 生成匹配结果")
+        print(f"错误：匹配结果文件不存在: {table_6_path}")
         exit(1)
     
-    # 处理表格替换 - 只替换 table_6 的内容
-    print("开始处理 table_6 的表格替换...")
+    # 处理表格替换
     replace_values_with_placeholders(doc, match_results_dir, table_match_files)
-    print("table_6 替换完成")
     
     # 保存处理后的模板文档
     doc.save(template_doc_path)
-    print(f"已保存生成的 table_6 测试模板文档: {template_doc_path}")
-
-
+    print(f"已保存模板文档: {template_doc_path}")

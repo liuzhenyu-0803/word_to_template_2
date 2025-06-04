@@ -21,7 +21,7 @@ def extract_tables(doc, output_dir):
         output_dir: 输出目录路径
         
     返回:
-        tuple: (表格数量, 唯一表格数量)
+        tuple: (表格数量, 唯一表格数量, 表格映射字典)
     """
     # 首先将Word文档转换为HTML
     temp_html_path = os.path.join(output_dir, "temp_document.html")
@@ -36,28 +36,29 @@ def extract_tables(doc, output_dir):
         word_to_html(docx_path, temp_html_path)
         
         # 从HTML中提取表格
-        table_count, unique_count = extract_tables_from_html(temp_html_path, output_dir)
+        table_count, unique_count, mapping = extract_tables_from_html(temp_html_path, output_dir)
         
         # 清理临时HTML文件
         if os.path.exists(temp_html_path):
             os.remove(temp_html_path)
             
-        return table_count, unique_count
+        return table_count, unique_count, mapping
         
     except Exception as e:
         print(f"表格提取失败: {e}")
-        return 0, 0
+        return 0, 0, {}
 
 def extract_tables_from_html(html_file_path, output_dir):
     """
     从HTML文件中提取所有表格，每个表格保存为独立HTML文件
+    使用统一的表格标识系统确保与replacer的编号一致
     
     参数:
         html_file_path (str): HTML文件路径
         output_dir (str): 输出目录路径
     
     返回:
-        tuple: (总表格数量, 唯一表格数量)
+        tuple: (总表格数量, 唯一表格数量, 表格映射字典)
     """
     try:
         # 读取HTML文件
@@ -70,27 +71,28 @@ def extract_tables_from_html(html_file_path, output_dir):
                 html_content = file.read()
         except:
             print(f"无法读取HTML文件: {html_file_path}")
-            return 0, 0
+            return 0, 0, {}
     
     # 解析HTML
     soup = BeautifulSoup(html_content, 'html.parser')
     
-    # 查找所有表格
-    tables = soup.find_all('table')
+    # 获取所有表格（包括嵌套表格）的统一标识
+    table_mapping = get_unified_table_mapping(soup)
     
-    if not tables:
+    if not table_mapping:
         print("未找到任何表格")
-        return 0, 0
+        return 0, 0, {}
     
-    # 用于去重的哈希集合
+    # 用于去重的哈希集合和映射
     table_hashes = set()
     unique_table_count = 0
+    final_mapping = {}
     
-    for i, table in enumerate(tables, 1):
-        print(f"处理第 {i} 个表格...")
+    for table_id, table_element in table_mapping.items():
+        print(f"处理表格 {table_id}...")
         
         # 创建清理后的表格
-        clean_table = create_clean_table(table)
+        clean_table = create_clean_table(table_element)
         
         if clean_table:
             # 计算表格内容哈希用于去重
@@ -101,16 +103,62 @@ def extract_tables_from_html(html_file_path, output_dir):
                 table_hashes.add(table_hash)
                 unique_table_count += 1
                 
-                # 保存清理后的表格
+                # 保存清理后的表格，使用统一编号
                 output_file = os.path.join(output_dir, f"table_{unique_table_count}.html")
                 with open(output_file, 'w', encoding='utf-8') as file:
                     file.write(table_content)
-                print(f"表格 {unique_table_count} 已保存到: {output_file}")
+                print(f"表格 {table_id} 已保存为 table_{unique_table_count}.html")
+                
+                # 记录映射关系
+                final_mapping[unique_table_count] = {
+                    'original_id': table_id,
+                    'element': table_element,
+                    'hash': table_hash
+                }
             else:
-                print(f"表格 {i} 是重复表格，已跳过")
+                print(f"表格 {table_id} 是重复表格，已跳过")
     
-    print(f"总共处理了 {len(tables)} 个表格，保存了 {unique_table_count} 个唯一表格")
-    return len(tables), unique_table_count
+    # 保存映射关系
+    mapping_file = os.path.join(output_dir, "table_mapping.json")
+    import json
+    with open(mapping_file, 'w', encoding='utf-8') as f:
+        json.dump({
+            str(k): {
+                'original_id': v['original_id'],
+                'hash': v['hash']
+            } for k, v in final_mapping.items()
+        }, f, ensure_ascii=False, indent=2)
+    
+    print(f"总共处理了 {len(table_mapping)} 个表格，保存了 {unique_table_count} 个唯一表格")
+    return len(table_mapping), unique_table_count, final_mapping
+
+def get_unified_table_mapping(soup):
+    """
+    获取HTML中所有表格的统一标识映射
+    确保与table_replacer中的编号逻辑一致
+    
+    参数:
+        soup: BeautifulSoup对象
+        
+    返回:
+        dict: {table_id: table_element} 映射
+    """
+    table_mapping = {}
+    
+    def process_tables_recursive(element, parent_path=""):
+        """递归处理表格，确保编号与replacer一致"""
+        tables = element.find_all('table', recursive=False)
+        
+        for i, table in enumerate(tables, 1):
+            table_id = f"{parent_path}table_{i}" if parent_path else f"table_{i}"
+            table_mapping[table_id] = table
+            
+            # 递归处理嵌套表格
+            nested_path = f"{table_id}_"
+            process_tables_recursive(table, nested_path)
+    
+    process_tables_recursive(soup)
+    return table_mapping
 
 def create_clean_table(original_table):
     """
@@ -235,13 +283,13 @@ if __name__ == "__main__":
     try:
         doc = Document(test_doc_path)
         print(f"成功打开文档: {test_doc_path}")
-        
-        # 提取表格
-        table_count, unique_count = extract_tables(doc, output_dir)
+          # 提取表格
+        table_count, unique_count, mapping = extract_tables(doc, output_dir)
         
         print(f"表格提取完成: 总共 {table_count} 个表格，唯一表格 {unique_count} 个")
+        print(f"表格映射: {mapping}")
         
     except Exception as e:
         print(f"测试失败: {e}")
         import traceback
-        traceback.print_exc() 
+        traceback.print_exc()
