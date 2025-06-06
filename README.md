@@ -1,4 +1,3 @@
-
 # Word文档智能模板生成系统
 
 本项目实现了Word文档的结构化内容提取、智能语义匹配与自动模板生成，适用于报告自动化、批量文档结构化、内容归档等场景。支持本地/远程大语言模型（LLM）驱动的业务字段智能识别。
@@ -49,7 +48,7 @@ word_to_template_2/
 ├── document/                  # 示例文档及中间结果
 │   ├── document.docx          # 原始Word文档
 │   ├── document.html          # 转换后的HTML
-│   ├── document_parts/        # 拆分后的文档元素（段落/表格/图片）
+│   ├── document_extract/      # 拆分后的文档元素（段落/表格/图片）
 │   ├── match_results/         # 匹配结果（JSON）
 │   └── key_descriptions/      # 关键字描述文件
 │       ├── table_key_description.txt

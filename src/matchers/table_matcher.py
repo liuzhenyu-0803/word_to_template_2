@@ -25,7 +25,7 @@ def read_file_content(file_path):
 
 # ================ LLM 相关函数 ================
 
-def prepare_extract_message(prompt_path, content_path):
+def prepare_system_prompt_1(prompt_path, content_path):
     """准备第一阶段提取key-value的消息
     
     Args:
@@ -41,7 +41,7 @@ def prepare_extract_message(prompt_path, content_path):
 
     return prompt
 
-def prepare_match_message(prompt_path, key_path, key_value_array):
+def prepare_system_prompt_2(prompt_path, key_path, key_value_array):
     """准备第二阶段匹配key的消息
     
     Args:
@@ -61,7 +61,7 @@ def prepare_match_message(prompt_path, key_path, key_value_array):
 
 # 注意：原call_llm函数已被移除，现在直接使用llm_manager.create_completion
 
-def parse_extract_response(response_text):
+def parse_response_1(response_text):
     """解析第一阶段的key-value提取结果"""
     try:
         # 直接解析JSON或提取JSON部分
@@ -94,7 +94,7 @@ def parse_extract_response(response_text):
     except Exception as e:
         raise ValueError(f"第一阶段解析失败: {str(e)}")
 
-def parse_match_response(response_text):
+def parse_response_2(response_text):
     """解析第二阶段的匹配结果"""
     try:
         # 直接解析JSON或提取JSON部分
@@ -129,7 +129,7 @@ def parse_match_response(response_text):
 
 # ================ 主要功能函数 ================
 
-def match_table(key_description_path, table_content_path):
+def match_table(table_content_path, key_description_path):
     """
     两阶段表格匹配：
     1. 提取key-value对
@@ -141,10 +141,9 @@ def match_table(key_description_path, table_content_path):
     current_dir = os.path.dirname(os.path.abspath(__file__))
     
     print("开始两阶段表格匹配...")
-    
-    # 第一阶段：提取key-value对
+      # 第一阶段：提取key-value对
     print("第一阶段：提取key-value对...")
-    extract_message = prepare_extract_message(
+    system_prompt_1 = prepare_system_prompt_1(
         os.path.join(current_dir, 'table_system_prompt_1.md'), 
         table_content_path
     )
@@ -152,14 +151,15 @@ def match_table(key_description_path, table_content_path):
     for attempt in range(2):
         try:
             print(f"第一阶段第{attempt+1}次调用LLM...")
-            extract_result = llm_manager.create_completion([{"role": "user", "content": extract_message}], temperature=0)
+            response_1 = llm_manager.create_completion([{"role": "user", "content": system_prompt_1}], temperature=0)
             
-            if not extract_result:
+            if not response_1:
                 print("第一阶段LLM返回空结果")
                 return []
             
-            print(f"第一阶段输出：\n{'-'*30}\n{extract_result}\n{'-'*30}")
-            key_value_pairs = parse_extract_response(extract_result)
+            print(f"第一阶段输出：\n{'-'*30}\n{response_1}\n{'-'*30}")
+            key_value_pairs = parse_response_1(response_1)
+            
             break
                 
         except Exception as e:
@@ -180,13 +180,12 @@ def match_table(key_description_path, table_content_path):
     key_to_valuepos = {}
     for item in key_value_pairs:
         key_to_valuepos[item['key']] = item['valuePos']
-    
-    # 第二阶段：key匹配
+      # 第二阶段：key匹配
     print("第二阶段：key匹配...")
     # 准备第二阶段输入时，只包含key和value，不包含valuePos
     key_value_for_matching = [{"key": item["key"], "value": item["value"]} for item in key_value_pairs]
     key_value_json = json.dumps(key_value_for_matching, ensure_ascii=False, indent=2)
-    match_message = prepare_match_message(
+    system_prompt_2 = prepare_system_prompt_2(
         os.path.join(current_dir, 'table_system_prompt_2.md'),
         key_description_path,
         key_value_json
@@ -195,14 +194,14 @@ def match_table(key_description_path, table_content_path):
     for attempt in range(2):
         try:
             print(f"第二阶段第{attempt+1}次调用LLM...")
-            match_result = llm_manager.create_completion([{"role": "user", "content": match_message}], temperature=0)
+            response_2 = llm_manager.create_completion([{"role": "user", "content": system_prompt_2}], temperature=0)
             
-            if not match_result:
+            if not response_2:
                 print("第二阶段LLM返回空结果")
                 return []
             
-            print(f"第二阶段输出：\n{'-'*30}\n{match_result}\n{'-'*30}")
-            match_results = parse_match_response(match_result)
+            print(f"第二阶段输出：\n{'-'*30}\n{response_2}\n{'-'*30}")
+            match_results = parse_response_2(response_2)
             
             # 将第一阶段的valuePos字段合并到第二阶段结果中
             final_results = []
@@ -229,7 +228,7 @@ def match_table(key_description_path, table_content_path):
     
     return []
 
-def match_tables(document_parts_dir, match_results_dir, key_description_path):
+def match_tables(document_parts_dir, key_description_path, match_results_dir):
     """批量处理表格文件进行两阶段匹配"""
     import os
     import json
@@ -253,9 +252,8 @@ def match_tables(document_parts_dir, match_results_dir, key_description_path):
     for table_file in table_files:
         stats["total_tables_processed"] += 1
         table_path = os.path.join(document_parts_dir, table_file)
-        
-        # 调用两阶段表格匹配
-        results = match_table(key_description_path, table_path)
+          # 调用两阶段表格匹配
+        results = match_table(table_path, key_description_path)
         
         if results:
             stats["tables_with_matches"] += 1
@@ -281,8 +279,8 @@ if __name__ == "__main__":
     import time
     start_time = time.time()
     
-    llm_manager.init_local_model()
-    # llm_manager.init_remote_model()
+    # llm_manager.init_local_model()
+    llm_manager.init_remote_model()
     
     # 使用项目标准路径结构，但只测试单个表格
     current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -290,11 +288,12 @@ if __name__ == "__main__":
     
     match_results_dir = os.path.join(project_dir, 'document', 'match_results')
     key_description_path = os.path.join(project_dir, 'document', 'key_descriptions', 'table_key_description.txt')
-    table_content_path = os.path.join(project_dir, 'document', 'document_parts', 'table_6.html')
+    table_content_path = os.path.join(project_dir, 'document', 'document_extract', 'table_6.html')
     
     print("开始单个表格匹配测试 (table_6)...")
-    results = match_table(key_description_path, table_content_path)
-      # 显示匹配结果
+    results = match_table(table_content_path, key_description_path)
+    
+    # 显示匹配结果
     if results:
         print("\n最终匹配结果:")
         for i, result in enumerate(results, 1):

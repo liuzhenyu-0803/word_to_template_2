@@ -4,57 +4,45 @@
 """
 
 import os
-import hashlib
 from bs4 import BeautifulSoup
 
-def extract_tables(html_path, output_dir):
-    """从HTML文件中提取表格"""
-    try:
-        return extract_tables_from_html(html_path, output_dir)
-    except Exception as e:
-        print(f"表格提取失败: {e}")
-        return 0, 0
-
-def extract_tables_from_html(html_file_path, output_dir):
+def extract_tables(html_file_path, output_dir):
     """从HTML文件中提取所有表格，每个表格保存为独立HTML文件"""
-    
-    # 读取HTML文件
     try:
-        with open(html_file_path, 'r', encoding='utf-8') as file:
-            html_content = file.read()
-    except UnicodeDecodeError:
-        with open(html_file_path, 'r', encoding='gbk') as file:
-            html_content = file.read()
-        
-    # 解析HTML并查找所有表格
-    soup = BeautifulSoup(html_content, 'html.parser')
-    tables = soup.find_all('table')
-    
-    if not tables:
-        print("未找到任何表格")
-        return 0, 0
-    
-    # 去重并保存表格
-    table_hashes = set()
-    unique_table_count = 0
-    
-    for i, table in enumerate(tables, 1):
-        clean_table = create_clean_table(table)
-        
-        if clean_table:
-            table_hash = hashlib.md5(str(clean_table).encode('utf-8')).hexdigest()
+        # 读取HTML文件
+        try:
+            with open(html_file_path, 'r', encoding='utf-8') as file:
+                html_content = file.read()
+        except UnicodeDecodeError:
+            with open(html_file_path, 'r', encoding='gbk') as file:
+                html_content = file.read()
             
-            if table_hash not in table_hashes:
-                table_hashes.add(table_hash)
-                unique_table_count += 1
-                
-                output_file = os.path.join(output_dir, f"table_{unique_table_count}.html")
+        # 解析HTML并查找所有表格
+        soup = BeautifulSoup(html_content, 'html.parser')
+        tables = soup.find_all('table')
+        
+        if not tables:
+            print("未找到任何表格")
+            return 0
+        
+        # 保存所有表格
+        table_count = 0
+        
+        for i, table in enumerate(tables, 1):
+            clean_table = create_clean_table(table)
+            
+            if clean_table:
+                table_count += 1
+                output_file = os.path.join(output_dir, f"table_{table_count}.html")
                 with open(output_file, 'w', encoding='utf-8') as file:
                     file.write(str(clean_table))
-                print(f"表格 {unique_table_count} 已保存")
-    
-    print(f"总共处理了 {len(tables)} 个表格，保存了 {unique_table_count} 个唯一表格")
-    return len(tables), unique_table_count
+                print(f"表格 {table_count} 已保存")
+        
+        print(f"总共处理了 {len(tables)} 个表格，保存了 {table_count} 个表格")
+        return table_count
+    except Exception as e:
+        print(f"表格提取失败: {e}")
+        return 0
 
 def create_clean_table(original_table):
     """创建简化的表格，只保留表格相关标签，去除所有样式和多余属性"""
@@ -123,20 +111,20 @@ if __name__ == "__main__":
     project_dir = os.path.dirname(os.path.dirname(current_dir))
     
     # 测试文档路径
-    test_html_path = os.path.join(project_dir, "document", "document.html")
-    output_dir = os.path.join(project_dir, "document", "document_parts")
+    html_path = os.path.join(project_dir, "document", "document.html")
+    output_dir = os.path.join(project_dir, "document", "document_extract")
     
     # 确保输出目录存在
     os.makedirs(output_dir, exist_ok=True)
     
     # 运行测试
     try:
-        print(f"开始处理HTML文件: {test_html_path}")
+        print(f"开始处理HTML文件: {html_path}")
         
         # 提取表格
-        table_count, unique_count = extract_tables(test_html_path, output_dir)
+        table_count = extract_tables(html_path, output_dir)
         
-        print(f"表格提取完成: 总共 {table_count} 个表格，唯一表格 {unique_count} 个")
+        print(f"表格提取完成: 表格 {table_count} 个")
         
     except Exception as e:
         print(f"测试失败: {e}")

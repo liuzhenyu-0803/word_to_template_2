@@ -17,7 +17,7 @@ def extract_document(html_path, output_dir):
         output_dir: 输出目录路径
         
     返回:
-        tuple: (段落数量, 表格数量, 唯一表格数量, 图片数量)
+        tuple: (段落数量, 表格数量)
     """
     # 检查并清理输出目录
     if os.path.exists(output_dir):
@@ -36,6 +36,6 @@ def extract_document(html_path, output_dir):
     paragraph_count = paragraph_extractor.extract_paragraphs(html_path, output_dir)
     
     # 处理表格
-    table_count, unique_tables = table_extractor.extract_tables(html_path, output_dir)
+    table_count = table_extractor.extract_tables(html_path, output_dir)
     
-    return paragraph_count, table_count, unique_tables
+    return paragraph_count, table_count

@@ -48,7 +48,7 @@ def process_word_document(original_doc_path, template_doc_path, parts_dir, match
     
     # 步骤2: 匹配文档元素
     print("\n===== 步骤2: 匹配文档元素 =====")
-    match_stats = match_document(parts_dir, match_results_dir, key_descriptions_dir)
+    match_stats = match_document(parts_dir, key_descriptions_dir, match_results_dir)
     
     if match_stats:
         print(f"总共处理了 {match_stats.get('total_tables_processed', 0)} 个表格")
@@ -92,9 +92,9 @@ if __name__ == "__main__":
     template_doc_path = os.path.join(project_dir, "document/template.docx")
     
     # 中间处理目录
-    parts_dir = os.path.join(project_dir, "document/document_parts")
-    match_results_dir = os.path.join(project_dir, "document/match_results")
-    key_descriptions_dir = os.path.join(project_dir, "document/key_descriptions")
+    parts_dir = os.path.join(project_dir, "document", "document_extract")
+    match_results_dir = os.path.join(project_dir, "document", "match_results")
+    key_descriptions_dir = os.path.join(project_dir, "document", "key_descriptions")
     
     # 处理文档
     process_word_document(
