@@ -33,7 +33,8 @@ def extract_document(html_path, output_dir):
         os.makedirs(output_dir)
     
     # 处理段落
-    paragraph_count = paragraph_extractor.extract_paragraphs(html_path, output_dir)
+    # paragraph_count = paragraph_extractor.extract_paragraphs(html_path, output_dir)
+    paragraph_count = 0
     
     # 处理表格
     table_count = table_extractor.extract_tables(html_path, output_dir)

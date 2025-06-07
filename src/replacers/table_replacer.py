@@ -7,19 +7,24 @@ import os
 import json
 import re
 
-def replace_values_with_placeholders(doc, match_results_dir, match_files):
+def replace_values_with_placeholders(doc, match_results_dir):
     """
     将Word文档中的表格内容替换为占位符，用于生成模板
     
     参数:
         doc: docx.Document对象，要处理的原始文档
         match_results_dir: 匹配结果目录路径
-        match_files: 表格匹配结果文件列表
     """
     
     try:
         # 获取文档中的所有表格（包括嵌套表格）
         all_tables = get_all_tables_including_nested(doc)
+        
+        # 自动查找所有table_*.json
+        match_files = [f for f in os.listdir(match_results_dir) if f.startswith('table_') and f.endswith('_matches.json')]
+        if not match_files:
+            print("未找到表格匹配结果文件")
+            return
         
         # 处理每个匹配文件
         for match_file in match_files:
@@ -35,7 +40,7 @@ def replace_values_with_placeholders(doc, match_results_dir, match_files):
                 
                 target_table = all_tables[table_number - 1]
                 
-                # 根据位置信息替换单元格内容
+                # 根据位置信信息替换单元格内容
                 replace_cells_by_position(target_table, match_data)
                 
             except Exception as e:
@@ -188,16 +193,12 @@ if __name__ == "__main__":
     import sys
     from docx import Document
     
-    # 添加项目根目录到系统路径
+    # 使用项目标准路径结构
     current_dir = os.path.dirname(os.path.abspath(__file__))
     project_dir = os.path.dirname(os.path.dirname(current_dir))
-    if project_dir not in sys.path:
-        sys.path.append(project_dir)
-    
-    # 使用项目标准路径结构
     original_doc_path = os.path.join(project_dir, "document", "document.docx")
     match_results_dir = os.path.join(project_dir, "document", "match_results")
-    template_doc_path = os.path.join(project_dir, "document", "template_table6_test.docx")
+    template_doc_path = os.path.join(project_dir, "document", "template.docx")
     
     # 检查输入文件和目录是否存在
     if not os.path.exists(original_doc_path):
@@ -227,7 +228,7 @@ if __name__ == "__main__":
         exit(1)
     
     # 处理表格替换
-    replace_values_with_placeholders(doc, match_results_dir, table_match_files)
+    replace_values_with_placeholders(doc, match_results_dir)
     
     # 保存处理后的模板文档
     doc.save(template_doc_path)
