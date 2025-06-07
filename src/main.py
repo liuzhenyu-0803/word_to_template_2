@@ -39,7 +39,7 @@ def main():
     try:
         # 步骤1: 初始化LLM模型
         print("===== 步骤1: 初始化语言模型 =====")
-        llm_manager.init_remote_model()
+        llm_manager.init_local_model()
         print("远程模型初始化完成\n")
           # 步骤2: Word文档转换为HTML
         print("===== 步骤2: 文档转换 =====")
@@ -57,7 +57,19 @@ def main():
         
         # 步骤4: 智能语义匹配
         print("===== 步骤4: 智能语义匹配 =====")
-        match_stats = match_document(extract_dir, key_descriptions_dir, match_results_dir)
+
+        extracted_files = [
+            # os.path.join(project_dir, "document/document_extract/table_5.html"),
+            os.path.join(project_dir, "document/document_extract/table_6.html"),
+            os.path.join(project_dir, "document/document_extract/table_7.html"),
+        ]
+        
+        if not extracted_files:
+            print(f"警告: 在目录中没有找到提取的文档元素文件。\n")
+            match_stats = {} # 或者根据需要进行其他处理
+        else:
+            print(f"将对以下提取的文件进行匹配: {extracted_files}\n")
+            match_stats = match_document(extracted_files, key_descriptions_dir, match_results_dir)
         
         if match_stats:
             print(f"匹配结果统计:")

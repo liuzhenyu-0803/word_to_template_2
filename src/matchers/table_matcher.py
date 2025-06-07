@@ -228,7 +228,7 @@ def match_table(table_content_path, key_description_path):
     
     return []
 
-def match_tables(document_parts_dir, key_description_path, match_results_dir):
+def match_tables(table_files_paths: list[str], key_description_path: str, match_results_dir: str):
     """批量处理表格文件进行两阶段匹配"""
     import os
     import json
@@ -239,19 +239,20 @@ def match_tables(document_parts_dir, key_description_path, match_results_dir):
         "tables_with_matches": 0
     }
     
-    # 获取所有表格文件
-    table_files = [f for f in os.listdir(document_parts_dir) if f.startswith("table_") and f.endswith(".html")]
-    
-    if not table_files:
-        print(f"警告：在目录 {document_parts_dir} 中未找到表格文件")
+    if not table_files_paths:
+        print(f"警告：传入的表格文件列表为空")
         return stats
     
     os.makedirs(match_results_dir, exist_ok=True)
     
     # 处理每个表格文件
-    for table_file in table_files:
+    for table_path in table_files_paths:
+        if not os.path.exists(table_path):
+            print(f"警告：文件 {table_path} 不存在，跳过处理。")
+            continue
+            
         stats["total_tables_processed"] += 1
-        table_path = os.path.join(document_parts_dir, table_file)
+        table_file_name = os.path.basename(table_path) # 获取文件名用于输出
           # 调用两阶段表格匹配
         results = match_table(table_path, key_description_path)
         
@@ -260,12 +261,14 @@ def match_tables(document_parts_dir, key_description_path, match_results_dir):
             stats["total_keys_matched"] += len(results)
             
             # 保存结果
-            output_filename = table_file.replace(".html", "_matches.json")
+            output_filename = table_file_name.replace(".html", "_matches.json")
             output_path = os.path.join(match_results_dir, output_filename)
             
             with open(output_path, 'w', encoding='utf-8') as f:
                 json.dump(results, f, ensure_ascii=False, indent=2)
-            print(f"已为 {table_file} 保存 {len(results)} 个匹配结果")
+            print(f"已为 {table_file_name} 保存 {len(results)} 个匹配结果到 {output_path}")
+        else:
+            print(f"文件 {table_file_name} 未匹配到结果。")
     
     print(f"表格匹配完成: 处理了 {stats['total_tables_processed']} 个表格，"
           f"{stats['tables_with_matches']} 个有匹配结果，"

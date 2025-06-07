@@ -1,4 +1,0 @@
-key_logo：logo
-key_thermal_image：热像图
-key_visible_light_image：可见光图
-key_histogram：直方图

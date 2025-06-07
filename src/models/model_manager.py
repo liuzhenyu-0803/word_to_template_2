@@ -54,7 +54,10 @@ class ModelManager:
                 
             self.local_model = Llama(
                 model_path=model_path, 
-                n_ctx=32768,
+                n_ctx=10000,
+                # offload_kqv=False,
+                # use_mmap=False,
+                # flash_attn=True,
             )
             self.use_local_model = True
             print(f"成功加载本地模型: {model_name}")
@@ -142,24 +145,24 @@ llm_manager = ModelManager()
 
 # 示例用法
 if __name__ == "__main__":
-    # # 初始化本地模型
-    # success = llm_manager.init_local_model()
-    
-    # if success:
-    #     # 测试本地模型
-    #     response = llm_manager.create_completion([
-    #         {"role": "user", "content": "你好，介绍一下自己"}
-    #     ])
-    #     print("本地模型响应:")
-    #     print(response)
-    
-    # 初始化远程模型
-    success = llm_manager.init_remote_model()
+    # 初始化本地模型
+    success = llm_manager.init_local_model()
     
     if success:
-        # 测试远程模型
+        # 测试本地模型
         response = llm_manager.create_completion([
             {"role": "user", "content": "你好，介绍一下自己"}
         ])
-        print("\n远程模型响应:")
+        print("本地模型响应:")
         print(response)
+    
+    # 初始化远程模型
+    # success = llm_manager.init_remote_model()
+    
+    # if success:
+    #     # 测试远程模型
+    #     response = llm_manager.create_completion([
+    #         {"role": "user", "content": "你好，介绍一下自己"}
+    #     ])
+    #     print("\n远程模型响应:")
+    #     print(response)
